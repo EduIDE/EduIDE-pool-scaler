@@ -160,6 +160,7 @@ Served on `:9090/metrics`.
 | `pool_scaler_override_active`, `pool_scaler_paused` | `appdef` |
 | `pool_scaler_last_decision_timestamp_seconds` | |
 | `pool_scaler_patches_total` | `appdef`, `result` |
+| `pool_scaler_decisions_total` | `appdef`, `source` (a strategy, `last-valid`, `floor`, `override`), `active_strategy` |
 | `pool_scaler_upcoming_events` | `appdef` |
 | `pool_scaler_active_strategy`, `pool_scaler_mode` | `strategy`, `mode` |
 | `pool_scaler_decision_model_breaker_open` | |

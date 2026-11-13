@@ -164,6 +164,7 @@ func (s *Scaler) Tick(ctx context.Context, now time.Time) error {
 			}
 			demands = append(demands, budget.Demand{App: name, Floor: min(floor, v), Desired: v, Pod: budget.Resources{CPU: a.PodCPU, Memory: a.PodMemory}})
 			wishes[name] = fmt.Sprintf("override %d until %s", ov.Value, ov.Until.Format(time.RFC3339))
+			s.Metrics.Decisions.WithLabelValues(name, "override", active).Inc()
 			continue
 		}
 
@@ -180,6 +181,7 @@ func (s *Scaler) Tick(ctx context.Context, now time.Time) error {
 		if choice.Rec != nil {
 			s.lastValid[name] = choice.Value
 		}
+		s.Metrics.Decisions.WithLabelValues(name, choice.Source, active).Inc()
 		reactiveFloor := -1
 		if r, ok := recs[config.StrategyReactive][name]; ok && active != config.StrategyStatic {
 			reactiveFloor = r.TargetIdle

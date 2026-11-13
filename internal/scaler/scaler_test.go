@@ -175,6 +175,9 @@ func TestFallbackToReactiveAndLastValid(t *testing.T) {
 	if testutil.ToFloat64(s.Metrics.StrategyFallbacks.WithLabelValues("predictive", "error", "predictive")) != 1 {
 		t.Fatal("fallback not counted")
 	}
+	if testutil.ToFloat64(s.Metrics.Decisions.WithLabelValues("java-17", "reactive", "predictive")) != 1 {
+		t.Fatal("decision source not counted")
+	}
 	// Prometheus down: reactive has no rate either, the last valid value holds.
 	p.err = errors.New("down")
 	_ = s.Tick(context.Background(), now.Add(time.Minute))

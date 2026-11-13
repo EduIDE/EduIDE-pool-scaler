@@ -26,6 +26,7 @@ type Metrics struct {
 	Paused               *prometheus.GaugeVec
 	LastDecision         prometheus.Gauge
 	Patches              *prometheus.CounterVec
+	Decisions            *prometheus.CounterVec
 	UpcomingEvents       *prometheus.GaugeVec
 	ActiveStrategy       *prometheus.GaugeVec
 	Mode                 *prometheus.GaugeVec
@@ -95,6 +96,10 @@ func New() *Metrics {
 			Name: "pool_scaler_patches_total",
 			Help: "Patches of spec.targetIdle by result (success, error).",
 		}, []string{"appdef", "result"}),
+		Decisions: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "pool_scaler_decisions_total",
+			Help: "Decisions per AppDefinition by where the value came from: a strategy, last-valid, floor or override.",
+		}, []string{"appdef", "source", "active_strategy"}),
 		UpcomingEvents: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "pool_scaler_upcoming_events",
 			Help: "Known events in the next 7 days.",
@@ -115,7 +120,7 @@ func New() *Metrics {
 	for _, c := range []prometheus.Collector{
 		m.DesiredIdle, m.TargetIdle, m.ForecastStarts, m.ForecastDistribution, m.Budget, m.BudgetClamped,
 		m.ProviderUp, m.ProviderErrors, m.StrategyErrors, m.StrategyFallbacks, m.OverrideActive, m.Paused,
-		m.LastDecision, m.Patches, m.UpcomingEvents, m.ActiveStrategy, m.Mode, m.DecisionModelBreaker,
+		m.LastDecision, m.Patches, m.Decisions, m.UpcomingEvents, m.ActiveStrategy, m.Mode, m.DecisionModelBreaker,
 	} {
 		f(c)
 	}
