@@ -1,0 +1,74 @@
+# Every field is optional; the values shown are the defaults unless marked.
+namespace: eduide-test1           # default: $POD_NAMESPACE
+mode: shadow                      # shadow | active
+interval: 30s
+timezone: Europe/Berlin           # default: UTC
+metricsAddr: ":9090"
+
+activeStrategy: reactive          # used when switchback is off
+strategies: [reactive, predictive]  # computed every round; default: [reactive]
+apps: []                          # AppDefinitions to manage; empty = all
+
+defaults: {floor: 0, ceiling: 100}
+appLimits:
+  java-17: {floor: 2, ceiling: 80, static: 3}
+
+guardrails:
+  maxStepUp: 20
+  maxStepDown: 5
+  hysteresis: 1
+  scaleDownCooldown: 10m
+
+reactive:
+  window: 5m
+  safetyFactor: 0.2
+  defaultReadySeconds: 60
+
+predictive:
+  alpha: 0.3
+  trainWeeks: 6
+  retrainInterval: 24h
+  quantile: 0.9
+  horizonBuffer: 1m
+  levels: [0, 1, 2, 3, 5, 8, 10, 15, 20, 30, 40, 60, 80, 120, 160]
+  minEventsForFactor: 3
+  events:
+    exam:    {factor: 0.9, before: 15m, after: 15m}
+    release: {factor: 0.2, before: 0s, after: 2h}
+    due:     {factor: 0.2, before: 6h, after: 0s}
+
+decisionModel:
+  url: ""                         # https only; token from $DECISION_MODEL_TOKEN
+  interval: 10m
+  timeout: 10s
+  quantile: 0.9
+  plausibilityFactor: 3
+  breakerFailures: 3
+  breakerPause: 15m
+
+budget:
+  nodeSelector: {}                # nodes session pods run on
+  podOverhead: {cpu: 100m, memory: 128Mi}
+  usageQuery: ""                  # PromQL returning free memory in bytes by usage
+  usageHeadroomFraction: 0.8
+
+prometheus:
+  url: http://prometheus-operated.cattle-monitoring-system:9090   # default: empty
+  timeout: 30s
+
+artemis:
+  url: ""                         # token from $ARTEMIS_TOKEN
+  days: 14
+  interval: 15m
+  timeout: 10s
+
+calendar:
+  file: ""                        # see calendar.yaml
+
+switchback:
+  enabled: false
+  seed: 1
+  strategies: [static, reactive, predictive]
+  examDayStrategy: predictive
+  schedule:
+    "2026-12-01": reactive
