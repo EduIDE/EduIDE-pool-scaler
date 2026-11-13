@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,15 +17,16 @@ import (
 	"github.com/EduIDE/EduIDE-pool-scaler/internal/budget"
 )
 
-func pod(name, app, state string, ready bool) *corev1.Pod {
-	status := corev1.ConditionFalse
+func dep(name, app string, claimed, ready bool) *appsv1.Deployment {
+	owners := []metav1.OwnerReference{{Kind: "AppDefinition", Name: app}}
+	if claimed {
+		owners = append(owners, metav1.OwnerReference{Kind: "Session", Name: "s-" + name})
+	}
+	d := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "ns", OwnerReferences: owners}}
 	if ready {
-		status = corev1.ConditionTrue
+		d.Status.ReadyReplicas = 1
 	}
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "ns", Labels: map[string]string{"app": app, PoolStateLabel: state}},
-		Status:     corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: status}}},
-	}
+	return d
 }
 
 func appDef(name string, targetIdle any) *unstructured.Unstructured {
@@ -55,12 +57,15 @@ func provider(objs ...runtime.Object) (*Provider, *dynfake.FakeDynamicClient) {
 	}, dyn
 }
 
-func TestAppsCountsPoolPods(t *testing.T) {
+func TestAppsCountsPoolDeployments(t *testing.T) {
 	p, _ := provider(
-		pod("instance-1-java-17-a", "java-17-1", "idle", true),
-		pod("instance-2-java-17-a", "java-17-2", "idle", false),
-		pod("instance-3-java-17-a", "java-17-3", "claimed", true),
-		pod("instance-1-java-17-templates-a", "java-17-templates-1", "idle", true),
+		dep("instance-1-java-17-a", "java-17", false, true),
+		dep("instance-2-java-17-a", "java-17", false, false),
+		dep("instance-3-java-17-a", "java-17", true, true),
+		dep("instance-1-java-17-templates-a", "java-17-templates", false, true),
+		// A cold-start session's Deployment is owned by the Session only.
+		&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "session-x", Namespace: "ns",
+			OwnerReferences: []metav1.OwnerReference{{Kind: "Session", Name: "x"}}}},
 	)
 	apps, err := p.Apps(context.Background())
 	if err != nil {

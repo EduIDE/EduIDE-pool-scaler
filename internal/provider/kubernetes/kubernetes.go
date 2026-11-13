@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"regexp"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,9 +25,6 @@ import (
 
 // AppDefinitionGVR is the served AppDefinition version.
 var AppDefinitionGVR = schema.GroupVersionResource{Group: "theia.cloud", Version: "v1beta11", Resource: "appdefinitions"}
-
-// PoolStateLabel is set by the operator on pool Deployments, Services and Pods.
-const PoolStateLabel = "pool-state"
 
 // Provider talks to the Kubernetes API.
 type Provider struct {
@@ -53,11 +50,11 @@ func (p *Provider) Apps(ctx context.Context) (map[string]*model.App, error) {
 		apps[a.Name] = a
 	}
 
-	pods, err := p.Core.CoreV1().Pods(p.Namespace).List(ctx, metav1.ListOptions{LabelSelector: PoolStateLabel})
+	deps, err := p.Core.AppsV1().Deployments(p.Namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("list pool pods: %w", err)
+		return nil, fmt.Errorf("list deployments: %w", err)
 	}
-	CountPods(apps, pods.Items)
+	CountPool(apps, deps.Items)
 	return apps, nil
 }
 
@@ -109,44 +106,35 @@ func quantity(v any) float64 {
 	return q.AsApproximateFloat64()
 }
 
-var appLabel = regexp.MustCompile(`^(.+)-\d+$`)
-
-// CountPods sorts pool pods into idle ready, idle starting and claimed. The
-// operator labels a pool pod `app=<appdefinition>-<instance number>`.
-func CountPods(apps map[string]*model.App, pods []corev1.Pod) {
-	for i := range pods {
-		pod := &pods[i]
-		if pod.DeletionTimestamp != nil {
+// CountPool sorts pool Deployments into idle ready, idle starting and
+// claimed. A pool Deployment is owned by its AppDefinition; a claimed one also
+// has an owner of kind Session. Ready means at least one ready replica.
+func CountPool(apps map[string]*model.App, deps []appsv1.Deployment) {
+	for i := range deps {
+		d := &deps[i]
+		if d.DeletionTimestamp != nil {
 			continue
 		}
-		m := appLabel.FindStringSubmatch(pod.Labels["app"])
-		if m == nil {
-			continue
-		}
-		a, ok := apps[m[1]]
-		if !ok {
-			continue
-		}
-		switch pod.Labels[PoolStateLabel] {
-		case "claimed":
-			a.Claimed++
-		case "idle":
-			if podReady(pod) {
-				a.IdleReady++
-			} else {
-				a.IdleStarting++
+		var app *model.App
+		claimed := false
+		for _, o := range d.OwnerReferences {
+			switch o.Kind {
+			case "AppDefinition":
+				app = apps[o.Name]
+			case "Session":
+				claimed = true
 			}
 		}
-	}
-}
-
-func podReady(pod *corev1.Pod) bool {
-	for _, c := range pod.Status.Conditions {
-		if c.Type == corev1.PodReady {
-			return c.Status == corev1.ConditionTrue
+		switch {
+		case app == nil:
+		case claimed:
+			app.Claimed++
+		case d.Status.ReadyReplicas >= 1:
+			app.IdleReady++
+		default:
+			app.IdleStarting++
 		}
 	}
-	return false
 }
 
 // Budget returns the quota rest and the unrequested allocatable on the

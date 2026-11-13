@@ -42,7 +42,7 @@ poolScaler:
 ```
 
 One replica, `Recreate`, no leader election. RBAC: `get/list/watch/patch`
-on AppDefinitions and read-only `pods`, `resourcequotas` in its namespace,
+on AppDefinitions and read-only `deployments`, `resourcequotas` in its namespace,
 read-only `nodes` and `pods` cluster-wide (for the node budget).
 
 ## Strategies
@@ -180,10 +180,14 @@ From the operator (EduIDE-Cloud):
 
 - AppDefinition `spec.minInstances`, `maxInstances`, `targetIdle`, requests,
   sidecars, annotations (`theia.cloud/v1beta11`).
-- Pool pods labelled `pool-state=idle|claimed` and `app=<appdefinition>-<n>`;
-  Ready condition splits idle into ready and starting.
+- Pool Deployments owned by their AppDefinition. One that also has an owner
+  of kind `Session` is claimed, otherwise free; free with
+  `status.readyReplicas >= 1` is ready, else starting.
 - `eduide_session_claims_total` (claim rate, training history) and
-  `eduide_pool_instance_ready_seconds` (p95 ready time), label `app_definition`.
+  `eduide_pool_instance_ready_seconds` (p95 ready time), label `app_definition`;
+  the `namespace` label is the scrape target's, added by Prometheus.
+- Under capacity pressure the operator keeps 0 free instances whatever
+  `targetIdle` says, so a target that is not reached is expected then.
 
 ## Backtesting
 
