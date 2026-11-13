@@ -134,7 +134,7 @@ decision metric carries `active_strategy`.
 
 ## Events
 
-- **Artemis**: `GET <artemis.url>/api/programming/admin/online-ide/upcoming?days=N`
+- **Artemis**: `GET <artemis.url>/api/programming/internal/online-ide/upcoming?days=N`
   with `Authorization: Bearer $ARTEMIS_TOKEN`. An exam becomes one `exam`
   event; an exercise a `release` (start date, else release date) and a `due`
   event. Fetched every `artemis.interval`; a failed fetch keeps the last

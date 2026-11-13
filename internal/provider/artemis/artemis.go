@@ -18,7 +18,7 @@ import (
 )
 
 // Path of the endpoint, fixed by the shared contract.
-const Path = "/api/programming/admin/online-ide/upcoming"
+const Path = "/api/programming/internal/online-ide/upcoming"
 
 // Entry is one element of the endpoint's JSON array.
 type Entry struct {
