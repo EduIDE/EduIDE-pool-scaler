@@ -24,6 +24,23 @@ removes surplus ones.
 The design and its reasoning are in the plan
 `plans/2026-11-13-prewarm-pool-autoscaler.md` of the EduIDE workspace.
 
+## Architecture
+
+«draft» marks parts that exist only in an open Draft PR or an unpushed branch, «planned» parts that are not built yet.
+Component, node and path tables, and how to regenerate the diagrams, are in [docs/architecture](docs/architecture/README.md).
+
+How the scaler fits into EduIDE:
+
+![EduIDE components with the pool scaler](docs/architecture/components-overview.svg)
+
+Inside the scaler, by Go package:
+
+![Pool scaler components](docs/architecture/components-pool-scaler.svg)
+
+TUM production on the AET cluster:
+
+![Deployment of TUM production](docs/architecture/deployment-tum-production.svg)
+
 ## Install
 
 The `eduide` Helm chart ships the scaler as an optional component:
